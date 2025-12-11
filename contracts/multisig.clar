@@ -100,6 +100,8 @@
                     token: token,
                     executed: false
                 })
+                ;; Increment txn-id by 1
+                (var-set txn-id (+ current-id u1))
                 (ok current-id)
             )
         )
