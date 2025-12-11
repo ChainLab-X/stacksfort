@@ -4,9 +4,9 @@ This directory contains the Clarity smart contract implementation for the Stacks
 
 ## Clarity Version
 
-- **Current Development**: Clarity 3 (for local development with Clarinet)
-- **Production Target**: Clarity 4 (live on mainnet since Bitcoin block 923222)
-- **Clarity 4 Status**: ✅ Planned - See [CLARITY4-IMPLEMENTATION-PLAN.md](./CLARITY4-IMPLEMENTATION-PLAN.md) for details
+- **Current Version**: Clarity 4 (live on mainnet since Bitcoin block 923222)
+- **Clarity 4 Status**: ✅ Active - See [CLARITY4-IMPLEMENTATION-PLAN.md](./CLARITY4-IMPLEMENTATION-PLAN.md) for implementation details
+- **Note**: Clarinet 3.6.1 has limited local support, but contracts deploy and run correctly on mainnet/testnet
 
 ### Clarity 4 Features Planned
 
@@ -32,7 +32,7 @@ This contract will leverage Clarity 4 features for enhanced security and functio
    - Hardware-secured wallet support
    - Biometric transaction signing
 
-**Note**: Clarity 4 features will be implemented incrementally as Clarinet SDK adds support. See the [implementation plan](./CLARITY4-IMPLEMENTATION-PLAN.md) for detailed roadmap.
+**Note**: Clarity 4 features are being implemented incrementally. See the [implementation plan](./CLARITY4-IMPLEMENTATION-PLAN.md) for detailed roadmap.
 
 ## Project Structure
 
