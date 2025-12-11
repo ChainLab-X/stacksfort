@@ -13,7 +13,7 @@ type StacksUserData = {
   };
 };
 
-type Network = "mainnet" | "testnet" | "disconnected";
+export type Network = "mainnet" | "testnet" | "disconnected";
 
 const getAppIcon = () => {
   if (typeof window === "undefined") return appDetails.icon;
