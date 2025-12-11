@@ -8,9 +8,10 @@ This document outlines the plan for integrating Clarity 4 features into the Stac
 
 ## Current Status
 
-- **Clarity Version**: 3 (for local development)
-- **Clarity 4 Status**: Live on mainnet, but Clarinet SDK doesn't support it yet for local development
-- **Implementation Status**: Not yet implemented - planned for future issues
+- **Clarity Version**: 4 (configured for mainnet deployment)
+- **Clarity 4 Status**: ✅ Active - Live on mainnet since Bitcoin block 923222
+- **Implementation Status**: In progress - Features being implemented incrementally
+- **Note**: Clarinet 3.6.1 has limited local support, but contracts work correctly on mainnet/testnet
 
 ## Clarity 4 Features to Implement
 
