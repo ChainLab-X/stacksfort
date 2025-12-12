@@ -150,18 +150,16 @@
     (message-hash (buff 32))
     (signature (buff 65))
 )
-    (let ((recovered-key (secp256k1-recover? message-hash signature)))
-        (match recovered-key
-            pubkey
-                (match (principal-of? pubkey)
-                    signer
-                        (if (is-some (index-of (var-get signers) signer))
-                            (ok signer)
-                            ERR_INVALID_SIGNATURE
-                        )
-                    none ERR_INVALID_SIGNATURE
-                )
-            none ERR_INVALID_SIGNATURE
-        )
+    (match (secp256k1-recover? message-hash signature)
+        pubkey
+            (match (principal-of? pubkey)
+                signer
+                    (if (is-some (index-of (var-get signers) signer))
+                        (ok signer)
+                        ERR_INVALID_SIGNATURE
+                    )
+                none ERR_INVALID_SIGNATURE
+            )
+        err-code ERR_INVALID_SIGNATURE
     )
 )
