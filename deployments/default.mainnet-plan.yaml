@@ -1,0 +1,18 @@
+---
+id: 0
+name: Mainnet deployment
+network: mainnet
+stacks-node: "https://api.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoin.blockstack.com:8332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: stacksfort-v1
+            expected-sender: SP3TXKY0REKG6P3W6ACFB615N5556EC8VYS4MFA4D
+            cost: 745305
+            path: contracts/multisig.clar
+            anchor-block-only: true
+            clarity-version: 4
+      epoch: "3.3"
