@@ -42,7 +42,7 @@ This project will leverage Clarity 4 features for enhanced security and function
   - Return `(ok id)` with the transaction ID
   - **Clarity 4**: Use `to-ascii?` for enhanced human-readable logging (see CLARITY4-IMPLEMENTATION-PLAN.md)
 
-- [ ] **Issue #3**: Implement `hash-txn` read-only function
+- [x] **Issue #3**: Implement `hash-txn` read-only function
   - Load transaction from `transactions` map using transaction ID
   - Convert transaction tuple to consensus buffer using `to-consensus-buff?`
   - Hash the buffer using `sha256` function
