@@ -8,12 +8,12 @@ cache_dir = './.cache'
 [[project.requirements]]
 contract_id = 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard'
 
-[contracts.stacksfort-v1]
+[contracts.multisig]
 path = 'contracts/multisig.clar'
-clarity_version = 4
-# Using Clarity 4 for mainnet deployment
-# Note: Clarinet 3.6.1 may show errors, but contracts will work on mainnet/testnet
-epoch = 'latest'
+clarity_version = 2
+# Using Clarity 2 for stable multisig support with as-contract
+# Clarity 2 is well-tested for multisig patterns
+epoch = '2.4'
 
 [repl.analysis]
 passes = ['check_checker']
