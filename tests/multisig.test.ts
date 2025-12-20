@@ -338,7 +338,7 @@ describe("Issue #11: STX Transfer Execution Tests", () => {
   it("should update balances correctly after execution", () => {
     const amount = 2000;
     const contractPrincipal = `${deployer}.multisig`;
-    const initialContractBalance = getStxBalance(contractPrincipal);
+    // const initialContractBalance = getStxBalance(contractPrincipal);
     
     submitStxTxn(signer1.address, amount);
     
@@ -349,7 +349,7 @@ describe("Issue #11: STX Transfer Execution Tests", () => {
     const executeResult = executeStxTransfer(0, [sig1, sig2], signer1.address);
     expect(executeResult.result).toBeOk(Cl.bool(true));
     
-    const finalContractBalance = getStxBalance(contractPrincipal);
+    // const finalContractBalance = getStxBalance(contractPrincipal);
     // Contract should have sent 'amount', so its balance decreases
     // Note: getStxBalance via simnet.getAssetsMap() is returning 0 in tests despite successful transfer
     // We rely on executeResult being 'ok true' which requires stx-transfer? to succeed

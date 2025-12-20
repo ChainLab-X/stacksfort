@@ -125,6 +125,6 @@ export function getTokenBalance(tokenContract: string, owner: string) {
         tokenContract,
         "get-balance",
         [ownerPrincipal],
-        owner // Sender for read-only doesn't matter much but keeping it consistent
+        simnet.deployer // Sender must be a standard principal
     );
 }
