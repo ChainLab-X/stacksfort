@@ -128,8 +128,30 @@
             (var-set threshold threshold-value)
             ;; Mark contract as initialized (set initialized to true)
             (var-set initialized true)
+            
+            ;; Issue #14: Add initialization event
+            (print {
+                event: "initialize",
+                signers: signers-list,
+                threshold: threshold-value
+            })
+            
             (ok true)
         )
+    )
+)
+
+;; Explicit deposit function to track inbound STX
+;; Issue #14: Added deposit function with event
+(define-public (deposit (amount uint))
+    (begin
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        (print {
+            event: "deposit",
+            sender: tx-sender,
+            amount: amount
+        })
+        (ok true)
     )
 )
 
@@ -173,8 +195,16 @@
                 })
                 ;; Increment txn-id by 1
                 (var-set txn-id (+ current-id u1))
-                ;; Print transaction details for logging
-                (print {txn-id: current-id, type: txn-type, amount: amount, recipient: recipient, token: token, expiration: expiry-time})
+                ;; Issue #14: standard event format
+                (print {
+                    event: "submit-txn",
+                    txn-id: current-id, 
+                    type: txn-type, 
+                    amount: amount, 
+                    recipient: recipient, 
+                    token: token, 
+                    expiration: expiry-time
+                })
                 (ok current-id)
             )
         )
@@ -315,13 +345,13 @@
                                     executed: true,
                                     expiration: (get expiration txn)
                                 })
-                                ;; Log execution details
+                                ;; Issue #14: Standard event for execution
                                 (print {
+                                    event: "execute-txn",
                                     txn-id: target-id,
-                                    type: u0,
+                                    type: "stx",
                                     amount: (get amount txn),
                                     recipient: (get recipient txn),
-                                    signatures: (len signatures),
                                     valid-signatures: valid-count
                                 })
                                 (var-set reentrancy-lock false)
@@ -417,14 +447,14 @@
                                     executed: true,
                                     expiration: (get expiration txn)
                                 })
-                                ;; Log execution details
+                                ;; Issue #14: Standard event for execution
                                 (print {
+                                    event: "execute-txn",
                                     txn-id: target-id,
-                                    type: u1,
+                                    type: "token",
                                     amount: (get amount txn),
                                     recipient: (get recipient txn),
                                     token: (get token txn),
-                                    signatures: (len signatures),
                                     valid-signatures: valid-count
                                 })
                                 (var-set reentrancy-lock false)
