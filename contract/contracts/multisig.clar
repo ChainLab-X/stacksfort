@@ -46,24 +46,34 @@
 (define-constant DEFAULT_EXPIRATION_WINDOW u604800) ;; 7 days in seconds
 
 ;; ============================================
-;; Error Constants
+;; Error Constants (Grouped & Standardized)
 ;; ============================================
-(define-constant ERR_OWNER_ONLY (err u1))
-(define-constant ERR_ALREADY_INITIALIZED (err u2))
-(define-constant ERR_TOO_MANY_SIGNERS (err u3))
-(define-constant ERR_INVALID_THRESHOLD (err u4))
-(define-constant ERR_NOT_INITIALIZED (err u5))
-(define-constant ERR_NOT_SIGNER (err u6))
-(define-constant ERR_INVALID_AMOUNT (err u7))
-(define-constant ERR_INVALID_TXN_TYPE (err u8))
-(define-constant ERR_INVALID_TXN_ID (err u9))
-(define-constant ERR_TXN_ALREADY_EXECUTED (err u10))
-(define-constant ERR_INSUFFICIENT_SIGNATURES (err u11))
-(define-constant ERR_INVALID_SIGNATURE (err u12))
-(define-constant ERR_INVALID_TOKEN (err u13))
-(define-constant ERR_STX_TRANSFER_FAILED (err u14))
-(define-constant ERR_REENTRANCY_DETECTED (err u15))
-(define-constant ERR_TXN_EXPIRED (err u16))
+
+;; Auth Errors (u100-u199)
+(define-constant ERR_AUTH_OWNER_ONLY (err u100))
+(define-constant ERR_AUTH_NOT_INITIALIZED (err u101))
+(define-constant ERR_AUTH_NOT_SIGNER (err u102))
+
+;; Initialization Errors (u200-u299)
+(define-constant ERR_INIT_ALREADY_INITIALIZED (err u200))
+(define-constant ERR_INIT_TOO_MANY_SIGNERS (err u201))
+(define-constant ERR_INIT_INVALID_THRESHOLD (err u202))
+
+;; Validation Errors (u300-u399)
+(define-constant ERR_VAL_INVALID_AMOUNT (err u300))
+(define-constant ERR_VAL_INVALID_TXN_TYPE (err u301))
+(define-constant ERR_VAL_INVALID_TXN_ID (err u302))
+(define-constant ERR_VAL_INVALID_TOKEN (err u303))
+
+;; Transaction State Errors (u400-u499)
+(define-constant ERR_TX_ALREADY_EXECUTED (err u400))
+(define-constant ERR_TX_EXPIRED (err u401))
+
+;; Execution Errors (u500-u599)
+(define-constant ERR_EXEC_INSUFFICIENT_SIGNATURES (err u500))
+(define-constant ERR_EXEC_INVALID_SIGNATURE (err u501))
+(define-constant ERR_EXEC_STX_TRANSFER_FAILED (err u502))
+(define-constant ERR_EXEC_REENTRANCY_DETECTED (err u503))
 
 ;; ============================================
 ;; Data Variables
@@ -114,15 +124,15 @@
 )
     (begin
         ;; Verify contract owner
-        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
+        (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_AUTH_OWNER_ONLY)
         ;; Check initialization status (must be false)
-        (asserts! (not (var-get initialized)) ERR_ALREADY_INITIALIZED)
+        (asserts! (not (var-get initialized)) ERR_INIT_ALREADY_INITIALIZED)
         ;; Validate signers list length (max 100 using MAX_SIGNERS)
         (let ((signers-count (len signers-list)))
-            (asserts! (<= signers-count MAX_SIGNERS) ERR_TOO_MANY_SIGNERS)
+            (asserts! (<= signers-count MAX_SIGNERS) ERR_INIT_TOO_MANY_SIGNERS)
             ;; Validate threshold (min 1 using MIN_SIGNATURES_REQUIRED, max should be <= signers count)
-            (asserts! (>= threshold-value MIN_SIGNATURES_REQUIRED) ERR_INVALID_THRESHOLD)
-            (asserts! (<= threshold-value signers-count) ERR_INVALID_THRESHOLD)
+            (asserts! (>= threshold-value MIN_SIGNATURES_REQUIRED) ERR_INIT_INVALID_THRESHOLD)
+            (asserts! (<= threshold-value signers-count) ERR_INIT_INVALID_THRESHOLD)
             ;; Set signers and threshold in storage
             (var-set signers signers-list)
             (var-set threshold threshold-value)
@@ -166,17 +176,17 @@
 )
     (begin
         ;; Verify contract is initialized
-        (asserts! (var-get initialized) ERR_NOT_INITIALIZED)
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
         ;; Verify caller is a signer
         (let ((caller tx-sender))
-            (asserts! (is-some (index-of (var-get signers) caller)) ERR_NOT_SIGNER)
+            (asserts! (is-some (index-of (var-get signers) caller)) ERR_AUTH_NOT_SIGNER)
             ;; Validate amount > 0
-            (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+            (asserts! (> amount u0) ERR_VAL_INVALID_AMOUNT)
             ;; Validate transaction type (0 = STX transfer, 1 = SIP-010 transfer)
-            (asserts! (or (is-eq txn-type u0) (is-eq txn-type u1)) ERR_INVALID_TXN_TYPE)
+            (asserts! (or (is-eq txn-type u0) (is-eq txn-type u1)) ERR_VAL_INVALID_TXN_TYPE)
             ;; For type 1 (SIP-010), validate that token contract is provided
             (if (is-eq txn-type u1)
-                (asserts! (is-some token) ERR_INVALID_TOKEN)
+                (asserts! (is-some token) ERR_VAL_INVALID_TOKEN)
                 true
             )
             ;; Get current txn-id from storage
@@ -214,8 +224,8 @@
 ;; Issue #3: Hash a stored transaction for signature verification
 (define-read-only (hash-txn (target-id uint))
     (let (
-        (txn (unwrap! (map-get? transactions target-id) ERR_INVALID_TXN_ID))
-        (txn-buff (unwrap! (to-consensus-buff? txn) ERR_INVALID_TXN_ID))
+        (txn (unwrap! (map-get? transactions target-id) ERR_VAL_INVALID_TXN_ID))
+        (txn-buff (unwrap! (to-consensus-buff? txn) ERR_VAL_INVALID_TXN_ID))
     )
         (ok (sha256 txn-buff))
     )
@@ -232,11 +242,11 @@
                 signer
                     (if (is-some (index-of (var-get signers) signer))
                         (ok signer)
-                        ERR_INVALID_SIGNATURE
+                        ERR_EXEC_INVALID_SIGNATURE
                     )
-                none ERR_INVALID_SIGNATURE
+                none ERR_EXEC_INVALID_SIGNATURE
             )
-        err-code ERR_INVALID_SIGNATURE
+        err-code ERR_EXEC_INVALID_SIGNATURE
     )
 )
 
@@ -270,7 +280,7 @@
     (signatures (list 100 (buff 65)))
 )
     (let (
-        (txn-hash (unwrap! (hash-txn target-id) ERR_INVALID_TXN_ID))
+        (txn-hash (unwrap! (hash-txn target-id) ERR_VAL_INVALID_TXN_ID))
         (result (fold
             count-valid-unique-signature
             signatures
@@ -288,37 +298,37 @@
 )
     (begin
         ;; Verify contract is initialized
-        (asserts! (var-get initialized) ERR_NOT_INITIALIZED)
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
 
         ;; Reentrancy Check
-        (asserts! (not (var-get reentrancy-lock)) ERR_REENTRANCY_DETECTED)
+        (asserts! (not (var-get reentrancy-lock)) ERR_EXEC_REENTRANCY_DETECTED)
         (var-set reentrancy-lock true)
 
         ;; Verify caller is a signer
-        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_NOT_SIGNER)
+        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_AUTH_NOT_SIGNER)
 
         ;; Load and validate the transaction
         (let (
-            (txn (unwrap! (map-get? transactions target-id) ERR_INVALID_TXN_ID))
+            (txn (unwrap! (map-get? transactions target-id) ERR_VAL_INVALID_TXN_ID))
         )
             ;; Verify transaction ID is valid (must be less than current txn-id)
-            (asserts! (< target-id (var-get txn-id)) ERR_INVALID_TXN_ID)
+            (asserts! (< target-id (var-get txn-id)) ERR_VAL_INVALID_TXN_ID)
 
             ;; Verify transaction type is STX (0)
-            (asserts! (is-eq (get type txn) u0) ERR_INVALID_TXN_TYPE)
+            (asserts! (is-eq (get type txn) u0) ERR_VAL_INVALID_TXN_TYPE)
 
             ;; Verify transaction hasn't been executed
-            (asserts! (not (get executed txn)) ERR_TXN_ALREADY_EXECUTED)
+            (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
 
             ;; Verify transaction has not expired
-            (asserts! (< stacks-block-time (get expiration txn)) ERR_TXN_EXPIRED)
+            (asserts! (< stacks-block-time (get expiration txn)) ERR_TX_EXPIRED)
 
             ;; Verify signatures list length >= threshold
-            (asserts! (>= (len signatures) (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
+            (asserts! (>= (len signatures) (var-get threshold)) ERR_EXEC_INSUFFICIENT_SIGNATURES)
 
             ;; Compute txn hash and count unique valid signatures
             (let (
-                (txn-hash (unwrap! (hash-txn target-id) ERR_INVALID_TXN_ID))
+                (txn-hash (unwrap! (hash-txn target-id) ERR_VAL_INVALID_TXN_ID))
                 (result (fold
                     count-valid-unique-signature
                     signatures
@@ -327,7 +337,7 @@
                 (valid-count (get count result))
             )
                 ;; Verify unique valid signature count >= threshold
-                (asserts! (>= valid-count (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
+                (asserts! (>= valid-count (var-get threshold)) ERR_EXEC_INSUFFICIENT_SIGNATURES)
 
                 ;; Execute STX transfer from contract to recipient using as-contract wrapper
                 (let (
@@ -360,7 +370,7 @@
                         err-value 
                             (begin
                                 (var-set reentrancy-lock false)
-                                ERR_STX_TRANSFER_FAILED
+                                ERR_EXEC_STX_TRANSFER_FAILED
                             )
                     )
                 )
@@ -377,45 +387,45 @@
 )
     (begin
         ;; Verify contract is initialized
-        (asserts! (var-get initialized) ERR_NOT_INITIALIZED)
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
 
         ;; Reentrancy Check
-        (asserts! (not (var-get reentrancy-lock)) ERR_REENTRANCY_DETECTED)
+        (asserts! (not (var-get reentrancy-lock)) ERR_EXEC_REENTRANCY_DETECTED)
         (var-set reentrancy-lock true)
 
         ;; Verify caller is a signer
-        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_NOT_SIGNER)
+        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_AUTH_NOT_SIGNER)
 
         ;; Load and validate the transaction
         (let (
-            (txn (unwrap! (map-get? transactions target-id) ERR_INVALID_TXN_ID))
+            (txn (unwrap! (map-get? transactions target-id) ERR_VAL_INVALID_TXN_ID))
         )
             ;; Verify transaction ID is valid (must be less than current txn-id)
-            (asserts! (< target-id (var-get txn-id)) ERR_INVALID_TXN_ID)
+            (asserts! (< target-id (var-get txn-id)) ERR_VAL_INVALID_TXN_ID)
 
             ;; Verify transaction type is SIP-010 (1)
-            (asserts! (is-eq (get type txn) u1) ERR_INVALID_TXN_TYPE)
+            (asserts! (is-eq (get type txn) u1) ERR_VAL_INVALID_TXN_TYPE)
 
             ;; Verify token principal is provided
-            (asserts! (is-some (get token txn)) ERR_INVALID_TOKEN)
+            (asserts! (is-some (get token txn)) ERR_VAL_INVALID_TOKEN)
 
             ;; Verify token contract parameter matches the stored token principal
-            (let ((stored-token (unwrap! (get token txn) ERR_INVALID_TOKEN)))
-                (asserts! (is-eq (contract-of token-contract) stored-token) ERR_INVALID_TOKEN)
+            (let ((stored-token (unwrap! (get token txn) ERR_VAL_INVALID_TOKEN)))
+                (asserts! (is-eq (contract-of token-contract) stored-token) ERR_VAL_INVALID_TOKEN)
             )
 
             ;; Verify transaction hasn't been executed
-            (asserts! (not (get executed txn)) ERR_TXN_ALREADY_EXECUTED)
+            (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
 
             ;; Verify transaction has not expired
-            (asserts! (< stacks-block-time (get expiration txn)) ERR_TXN_EXPIRED)
+            (asserts! (< stacks-block-time (get expiration txn)) ERR_TX_EXPIRED)
 
             ;; Verify signatures list length >= threshold
-            (asserts! (>= (len signatures) (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
+            (asserts! (>= (len signatures) (var-get threshold)) ERR_EXEC_INSUFFICIENT_SIGNATURES)
 
             ;; Compute txn hash and count unique valid signatures
             (let (
-                (txn-hash (unwrap! (hash-txn target-id) ERR_INVALID_TXN_ID))
+                (txn-hash (unwrap! (hash-txn target-id) ERR_VAL_INVALID_TXN_ID))
                 (result (fold
                     count-valid-unique-signature
                     signatures
@@ -424,7 +434,7 @@
                 (valid-count (get count result))
             )
                 ;; Verify unique valid signature count >= threshold
-                (asserts! (>= valid-count (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
+                (asserts! (>= valid-count (var-get threshold)) ERR_EXEC_INSUFFICIENT_SIGNATURES)
 
                 ;; Execute SIP-010 transfer from contract to recipient using as-contract wrapper
                 (let (
@@ -463,7 +473,7 @@
                         err-value 
                             (begin
                                 (var-set reentrancy-lock false)
-                                ERR_STX_TRANSFER_FAILED
+                                ERR_EXEC_STX_TRANSFER_FAILED
                             )
                     )
                 )
