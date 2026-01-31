@@ -39,7 +39,7 @@ This contract will leverage Clarity 4 features for enhanced security and functio
 ```
 smart-contract/
 ├── contracts/                    # Clarity smart contract files (.clar)
-│   └── multisig.clar            # Main multisig contract
+│   └── stacksfort-multisig.clar            # Main multisig contract
 ├── tests/                        # Test files (.test.ts)
 │   └── 00-contract-setup.test.ts
 ├── settings/                     # Configuration files for different networks
