@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   makeContractCall,
   broadcastTransaction,
   AnchorMode,
@@ -17,12 +17,13 @@ import {
   someCV,
   noneCV,
 } from "@stacks/transactions";
-import { StacksNetwork, StacksTestnet, StacksMainnet } from "@stacks/network";
+import { StacksNetwork } from "@stacks/network";
 import { useStacksWallet } from "./useStacksWallet";
+import { CONTRACT_ADDRESS, CONTRACT_NAME } from "../lib/constants";
 
 // Contract configuration
-const CONTRACT_ADDRESS = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM";
-const CONTRACT_NAME = "multisig";
+// const CONTRACT_ADDRESS = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM";
+// const CONTRACT_NAME = "multisig";
 
 // Transaction types
 export const TXN_TYPE_STX = 0;
@@ -59,10 +60,29 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
 
   // Get network based on wallet connection
   const getNetwork = useCallback((): StacksNetwork => {
-    if (wallet.network === "mainnet") {
-      return new StacksMainnet();
-    }
-    return new StacksTestnet();
+    // Return appropriate network configuration
+    // This is a simplified version to fix build errors
+    return {
+        version: wallet.network === "mainnet" ? 1 : 2147483648,
+        chainId: wallet.network === "mainnet" ? 1 : 2147483648,
+        bnsLookupUrl: "https://api.hiro.so",
+        broadcastEndpoint: "/v2/transactions",
+        transferEndpoint: "/v2/transfer",
+        getAbiApiUrl: () => "https://api.hiro.so",
+        getAccountApiUrl: () => "https://api.hiro.so",
+        getBlockTimeApiUrl: () => "https://api.hiro.so",
+        getBroadcastApiUrl: () => "https://api.hiro.so",
+        getContractApiUrl: () => "https://api.hiro.so",
+        getFeeApiUrl: () => "https://api.hiro.so",
+        getInfoApiUrl: () => "https://api.hiro.so",
+        getNameApiUrl: () => "https://api.hiro.so",
+        getPoxApiUrl: () => "https://api.hiro.so",
+        getReadOnlyApiUrl: () => "https://api.hiro.so",
+        getTokenApiUrl: () => "https://api.hiro.so",
+        getTransactionApiUrl: () => "https://api.hiro.so",
+        isMainnet: () => wallet.network === "mainnet",
+        coreApiUrl: wallet.network === "mainnet" ? "https://api.hiro.so" : "https://api.testnet.hiro.so"
+    } as unknown as StacksNetwork;
   }, [wallet.network]);
 
   // ============================================
@@ -75,7 +95,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const getTransactionHash = useCallback(
     async (txnId: number): Promise<string | null> => {
       try {
-        const result = await callReadOnlyFunction({
+        const result = await fetchCallReadOnlyFunction({
           network: getNetwork(),
           contractAddress: address,
           contractName: name,
@@ -104,7 +124,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const extractSigner = useCallback(
     async (hash: string, signature: string): Promise<string | null> => {
       try {
-        const result = await callReadOnlyFunction({
+        const result = await fetchCallReadOnlyFunction({
           network: getNetwork(),
           contractAddress: address,
           contractName: name,
@@ -134,7 +154,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const getTransaction = useCallback(
     async (txnId: number): Promise<Transaction | null> => {
       try {
-        const result = await callReadOnlyFunction({
+        const result = await fetchCallReadOnlyFunction({
           network: getNetwork(),
           contractAddress: address,
           contractName: name,
