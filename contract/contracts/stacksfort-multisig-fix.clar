@@ -74,6 +74,7 @@
 ;; Transaction State Errors (u400-u499)
 (define-constant ERR_TX_ALREADY_EXECUTED (err u400))
 (define-constant ERR_TX_EXPIRED (err u401))
+(define-constant ERR_TX_ALREADY_CANCELLED (err u402))
 
 ;; Execution Errors (u500-u599)
 (define-constant ERR_EXEC_INSUFFICIENT_SIGNATURES (err u500))
@@ -101,6 +102,7 @@
     recipient: principal,
     token: (optional principal),
     executed: bool,
+    cancelled: bool,
     expiration: uint,
     new-signers: (optional (list 100 principal)),
     new-threshold: (optional uint)
@@ -209,6 +211,7 @@
                     recipient: recipient,
                     token: token,
                     executed: false,
+                    cancelled: false,
                     expiration: expiry-time,
                     new-signers: none,
                     new-threshold: none
@@ -257,6 +260,7 @@
                     recipient: (as-contract tx-sender),
                     token: none,
                     executed: false,
+                    cancelled: false,
                     expiration: expiry-time,
                     new-signers: (some new-signers-list),
                     new-threshold: (some new-threshold-value)
@@ -374,6 +378,9 @@
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
 
+            ;; Verify transaction hasn't been cancelled
+            (asserts! (not (get cancelled txn)) ERR_TX_ALREADY_CANCELLED)
+
             ;; Verify transaction has not expired
             (asserts! (< block-height (get expiration txn)) ERR_TX_EXPIRED)
 
@@ -464,6 +471,9 @@
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
 
+            ;; Verify transaction hasn't been cancelled
+            (asserts! (not (get cancelled txn)) ERR_TX_ALREADY_CANCELLED)
+
             ;; Verify transaction has not expired
             (asserts! (< block-height (get expiration txn)) ERR_TX_EXPIRED)
 
@@ -538,6 +548,7 @@
         )
             (asserts! (is-eq (get type txn) TX_TYPE_CONFIG) ERR_VAL_INVALID_TXN_TYPE)
             (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
+            (asserts! (not (get cancelled txn)) ERR_TX_ALREADY_CANCELLED)
             (asserts! (< block-height (get expiration txn)) ERR_TX_EXPIRED)
 
             (let (
@@ -569,6 +580,35 @@
                 (var-set reentrancy-lock false)
                 (ok true)
             )
+        )
+    )
+)
+
+;; Issue #16: Cancel a pending transaction
+(define-public (cancel-txn (target-id uint))
+    (begin
+        ;; Verify contract is initialized
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
+        ;; Verify caller is a signer
+        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_AUTH_NOT_SIGNER)
+        
+        (let (
+            (txn (unwrap! (map-get? transactions target-id) ERR_VAL_INVALID_TXN_ID))
+        )
+            ;; Verify transaction hasn't been executed
+            (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
+            ;; Verify transaction hasn't been cancelled
+            (asserts! (not (get cancelled txn)) ERR_TX_ALREADY_CANCELLED)
+            
+            ;; Mark as cancelled
+            (map-set transactions target-id (merge txn { cancelled: true }))
+            
+            (print {
+                event: "cancel-txn",
+                txn-id: target-id,
+                cancelled-by: tx-sender
+            })
+            (ok true)
         )
     )
 )

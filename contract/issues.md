@@ -189,6 +189,9 @@ This project will leverage Clarity 4 features for enhanced security and function
   - Add expiration check in execution functions (`execute-stx-transfer-txn`, `execute-token-transfer-txn`)
   - Add error constant: `ERR_TXN_EXPIRED`
   - **Clarity 4**: Used `block-height` instead of `stacks-block-time` for compatibility
-- [ ] **Issue #16**: ❌ PENDING - Add ability to cancel pending transactions
+- [x] **Issue #16**: ✅ COMPLETED - Add ability to cancel pending transactions
+  - ✅ Added `cancelled` field to transaction map
+  - ✅ Implemented `cancel-txn` public function (signers only)
+  - ✅ Added validation to prevent execution of cancelled transactions
 - [x] **Issue #17**: ✅ COMPLETED - Add signer management (add/remove signers)
 - [x] **Issue #18**: ✅ COMPLETED - Add threshold update functionality
