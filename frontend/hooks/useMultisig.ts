@@ -9,11 +9,9 @@ import {
   broadcastTransaction,
   AnchorMode,
   PostConditionMode,
-  Cl,
-  ClarityValue,
+  uintCV,
   cvToValue,
   principalCV,
-  uintCV,
   listCV,
   bufferCV,
   someCV,
@@ -23,13 +21,10 @@ import { StacksNetwork } from "@stacks/network";
 import { useStacksWallet } from "./useStacksWallet";
 import { CONTRACT_ADDRESS, CONTRACT_NAME } from "../lib/constants";
 
-// Contract configuration
-// const CONTRACT_ADDRESS = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM";
-// const CONTRACT_NAME = "multisig";
-
 // Transaction types
 export const TXN_TYPE_STX = 0;
 export const TXN_TYPE_TOKEN = 1;
+export const TXN_TYPE_CONFIG = 2;
 
 // Transaction interface
 export interface Transaction {
@@ -39,6 +34,7 @@ export interface Transaction {
   recipient: string;
   token: string | null;
   executed: boolean;
+  cancelled: boolean;
 }
 
 // Multisig state interface
@@ -61,11 +57,9 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const name = contractName || CONTRACT_NAME;
 
   const getNetwork = useCallback((): StacksNetwork => {
-    // FORCE MAINNET configuration
-    // We ignore the wallet's network preference because contracts are only on Mainnet
     return {
-        version: 1, // Mainnet
-        chainId: 1, // Mainnet
+        version: 1,
+        chainId: 1,
         bnsLookupUrl: "https://api.hiro.so",
         broadcastEndpoint: "/v2/transactions",
         transferEndpoint: "/v2/transfer",
@@ -90,9 +84,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   // Read-only Functions
   // ============================================
 
-  /**
-   * Get transaction hash for signing
-   */
   const getTransactionHash = useCallback(
     async (txnId: number): Promise<string | null> => {
       try {
@@ -112,16 +103,12 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
         return null;
       } catch (err) {
         console.error("Error getting transaction hash:", err);
-        setError(err instanceof Error ? err.message : "Failed to get transaction hash");
         return null;
       }
     },
     [address, name, wallet.address, getNetwork]
   );
 
-  /**
-   * Extract signer from signature
-   */
   const extractSigner = useCallback(
     async (hash: string, signature: string): Promise<string | null> => {
       try {
@@ -149,9 +136,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [address, name, wallet.address, getNetwork]
   );
 
-  /**
-   * Get transaction by ID
-   */
   const getTransaction = useCallback(
     async (txnId: number): Promise<Transaction | null> => {
       try {
@@ -173,6 +157,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
             recipient: txnData.recipient,
             token: txnData.token || null,
             executed: txnData.executed,
+            cancelled: txnData.cancelled || false,
           };
         }
         return null;
@@ -188,9 +173,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   // Public Functions (Contract Calls)
   // ============================================
 
-  /**
-   * Initialize multisig with signers and threshold
-   */
   const initialize = useCallback(
     async (signers: string[], threshold: number) => {
       if (!wallet.address) {
@@ -201,9 +183,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
         const signerCVs = signers.map((signer) => principalCV(signer));
-
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -211,19 +191,16 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           contractName: name,
           functionName: "initialize",
           functionArgs: [listCV(signerCVs), uintCV(threshold)],
-          senderKey: wallet.address, // This will be handled by Stacks Connect
+          senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error initializing multisig:", err);
         setError(err instanceof Error ? err.message : "Failed to initialize multisig");
         return null;
       } finally {
@@ -233,9 +210,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
-  /**
-   * Submit a transaction
-   */
   const submitTransaction = useCallback(
     async (
       type: number,
@@ -252,15 +226,8 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
-        const tokenCV = token
-          ? someCV(principalCV(token))
-          : noneCV();
-        
-        const expirationCV = expiration
-          ? someCV(uintCV(expiration))
-          : noneCV();
-
+        const tokenCV = token ? someCV(principalCV(token)) : noneCV();
+        const expirationCV = expiration ? someCV(uintCV(expiration)) : noneCV();
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -277,16 +244,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error submitting transaction:", err);
         setError(err instanceof Error ? err.message : "Failed to submit transaction");
         return null;
       } finally {
@@ -296,9 +260,42 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
-  /**
-   * Execute STX transfer transaction
-   */
+  const cancelTransaction = useCallback(
+    async (txnId: number): Promise<string | null> => {
+      if (!wallet.address) {
+        setError("Wallet not connected");
+        return null;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const txOptions = {
+          network: getNetwork(),
+          anchorMode: AnchorMode.Any,
+          contractAddress: address,
+          contractName: name,
+          functionName: "cancel-txn",
+          functionArgs: [uintCV(txnId)],
+          senderKey: wallet.address,
+          postConditionMode: PostConditionMode.Deny,
+        };
+        const transaction = await makeContractCall(txOptions);
+        const broadcastResponse = await broadcastTransaction({
+          transaction,
+          network: getNetwork(),
+        });
+        return broadcastResponse.txid;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to cancel transaction");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [wallet.address, address, name, getNetwork]
+  );
+
   const executeStxTransfer = useCallback(
     async (txnId: number, signatures: string[]): Promise<string | null> => {
       if (!wallet.address) {
@@ -309,11 +306,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
-        const signatureCVs = signatures.map((sig) =>
-          bufferCV(Buffer.from(sig, "hex"))
-        );
-
+        const signatureCVs = signatures.map((sig) => bufferCV(Buffer.from(sig, "hex")));
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -324,16 +317,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error executing STX transfer:", err);
         setError(err instanceof Error ? err.message : "Failed to execute STX transfer");
         return null;
       } finally {
@@ -343,9 +333,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
-  /**
-   * Execute token transfer transaction
-   */
   const executeTokenTransfer = useCallback(
     async (
       txnId: number,
@@ -360,11 +347,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
-        const signatureCVs = signatures.map((sig) =>
-          bufferCV(Buffer.from(sig, "hex"))
-        );
-
+        const signatureCVs = signatures.map((sig) => bufferCV(Buffer.from(sig, "hex")));
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -379,16 +362,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error executing token transfer:", err);
         setError(err instanceof Error ? err.message : "Failed to execute token transfer");
         return null;
       } finally {
@@ -398,9 +378,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
-  /**
-   * Submit a configuration change transaction
-   */
   const submitConfigTransaction = useCallback(
     async (
       newSigners: string[],
@@ -415,13 +392,8 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
-        const expirationCV = expiration
-          ? someCV(uintCV(expiration))
-          : noneCV();
-
+        const expirationCV = expiration ? someCV(uintCV(expiration)) : noneCV();
         const signerCVs = newSigners.map((signer) => principalCV(signer));
-
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -436,16 +408,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error submitting config transaction:", err);
         setError(err instanceof Error ? err.message : "Failed to submit config transaction");
         return null;
       } finally {
@@ -455,9 +424,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
-  /**
-   * Execute configuration change transaction
-   */
   const executeConfigTransaction = useCallback(
     async (txnId: number, signatures: string[]): Promise<string | null> => {
       if (!wallet.address) {
@@ -468,11 +434,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       try {
         setLoading(true);
         setError(null);
-
-        const signatureCVs = signatures.map((sig) =>
-          bufferCV(Buffer.from(sig, "hex"))
-        );
-
+        const signatureCVs = signatures.map((sig) => bufferCV(Buffer.from(sig, "hex")));
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -483,16 +445,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
         };
-
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
           transaction,
           network: getNetwork(),
         });
-
         return broadcastResponse.txid;
       } catch (err) {
-        console.error("Error executing config transaction:", err);
         setError(err instanceof Error ? err.message : "Failed to execute config transaction");
         return null;
       } finally {
@@ -506,9 +465,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   // Helper Functions
   // ============================================
 
-  /**
-   * Check if user is a signer
-   */
   const isSigner = useCallback(
     (address: string): boolean => {
       if (!multisigState) return false;
@@ -517,20 +473,15 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [multisigState]
   );
 
-  /**
-   * Check if user is the current wallet signer
-   */
   const isCurrentUserSigner = useCallback((): boolean => {
     if (!wallet.address || !multisigState) return false;
     return multisigState.signers.includes(wallet.address);
   }, [wallet.address, multisigState]);
 
-  /**
-   * Get transaction status
-   */
   const getTransactionStatus = useCallback(
     (transaction: Transaction, signatureCount: number): string => {
       if (transaction.executed) return "executed";
+      if (transaction.cancelled) return "cancelled";
       if (!multisigState) return "unknown";
       if (signatureCount >= multisigState.threshold) return "ready-to-execute";
       if (signatureCount > 0) return "collecting-signatures";
@@ -539,19 +490,12 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [multisigState]
   );
 
-  /**
-   * Fetch multisig state from contract
-   */
   const fetchMultisigState = useCallback(async () => {
     try {
-      const apiUrl = "https://api.hiro.so"; // FORCE MAINNET
-      
+      const apiUrl = "https://api.hiro.so";
       const fetchDataVar = async (varName: string) => {
-        const response = await fetch(
-          `${apiUrl}/v2/contracts/data-var/${address}/${name}/${varName}`
-        );
+        const response = await fetch(`${apiUrl}/v2/contracts/data-var/${address}/${name}/${varName}`);
         if (!response.ok) {
-            // If 404, return null (handled below)
             if (response.status === 404) return null;
             throw new Error(`Failed to fetch ${varName}: ${response.statusText}`);
         }
@@ -566,64 +510,38 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
         fetchDataVar("txn-id"),
       ]);
 
-      // If any critical data is missing (contract not found), set default state
       if (!initializedHex || !signersHex || !thresholdHex || !txnIdHex) {
-          console.warn("Contract data not found, assuming uninitialized or pending deployment.");
-          setMultisigState({
-            initialized: false,
-            signers: [],
-            threshold: 0,
-            nextTxnId: 0,
-          });
+          setMultisigState({ initialized: false, signers: [], threshold: 0, nextTxnId: 0 });
           return;
       }
 
       const initialized = cvToValue(deserializeCV(initializedHex));
       const signers = cvToValue(deserializeCV(signersHex)).map((s: any) => s.value || s); 
-      // cvToValue for list returns array of values. For principalCV, it might be the string directly or object depending on version.
-      // Usually strings for principals.
-      
       const threshold = Number(cvToValue(deserializeCV(thresholdHex)));
       const nextTxnId = Number(cvToValue(deserializeCV(txnIdHex)));
 
-      setMultisigState({
-        initialized,
-        signers,
-        threshold,
-        nextTxnId,
-      });
+      setMultisigState({ initialized, signers, threshold, nextTxnId });
     } catch (err) {
-      console.error("Error fetching multisig state:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch multisig state");
     }
   }, [address, name, getNetwork]);
 
-  /**
-   * Fetch transactions from contract
-   */
   const fetchTransactions = useCallback(async () => {
     try {
       if (!multisigState) return;
-      const apiUrl = "https://api.hiro.so"; // FORCE MAINNET
-      
+      const apiUrl = "https://api.hiro.so";
       const txs: Transaction[] = [];
       
-      // Fetch in reverse order (newest first)
       for (let i = multisigState.nextTxnId - 1; i >= 0; i--) {
-        // Prepare map key
         const key = uintCV(i);
         const keyHex = `0x${Buffer.from(serializeCV(key)).toString("hex")}`;
-        
         const response = await fetch(`${apiUrl}/v2/map_entry/${address}/${name}/transactions`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(keyHex)
         });
         
-        if (!response.ok) {
-            console.warn(`Failed to fetch transaction ${i}: ${response.statusText}`);
-            continue;
-        }
+        if (!response.ok) continue;
 
         const data = await response.json();
         if (data.data) {
@@ -633,20 +551,16 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
                 type: Number(txnVal.type),
                 amount: BigInt(txnVal.amount),
                 recipient: txnVal.recipient,
-                token: txnVal.token ? txnVal.token.value : null, // Handle optional
-                executed: txnVal.executed
+                token: txnVal.token ? txnVal.token.value : null,
+                executed: txnVal.executed,
+                cancelled: txnVal.cancelled || false
             });
         }
       }
-      
       setTransactions(txs);
-    } catch (err) {
-      console.error("Error fetching transactions:", err);
-      // Don't set global error here to avoid blocking UI if just one fetch fails
-    }
+    } catch (err) {}
   }, [address, name, getNetwork, multisigState]);
 
-  // Auto-fetch state when wallet connects
   useEffect(() => {
     if (wallet.isSignedIn) {
       fetchMultisigState();
@@ -655,27 +569,21 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   }, [wallet.isSignedIn, fetchMultisigState, fetchTransactions]);
 
   return {
-    // State
     state: multisigState,
     transactions,
     balance,
     isLoading: loading,
     error,
-
-    // Read-only functions
     getTransactionHash,
     extractSigner,
     getTransaction,
-
-    // Public functions
     initialize,
     submitTransaction,
+    cancelTransaction,
     submitConfigTransaction,
     executeStxTransfer,
     executeTokenTransfer,
     executeConfigTransaction,
-
-    // Helper functions
     isSigner,
     isCurrentUserSigner,
     getTransactionStatus,

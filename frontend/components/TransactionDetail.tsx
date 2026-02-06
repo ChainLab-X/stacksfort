@@ -23,8 +23,8 @@ import {
   User,
   Copy,
   PenTool,
-  AlertCircle,
-  Ban
+  Ban,
+  AlertCircle
 } from "lucide-react";
 
 type Props = {
@@ -57,13 +57,14 @@ export function TransactionDetail({
   signers,
   onClose 
 }: Props) {
-  const { getTransactionHash, isCurrentUserSigner } = useMultisig(contractAddress, contractName);
+  const { getTransactionHash, isCurrentUserSigner, cancelTransaction } = useMultisig(contractAddress, contractName);
   const wallet = useStacksWallet();
   const { addSignature, getTxnSignatures, hasSigned } = useSignatures();
   
   const [hash, setHash] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Get signatures for this transaction from our local store
   const localSignatures = useMemo(() => getTxnSignatures(transaction.id), [transaction.id, getTxnSignatures]);
@@ -85,6 +86,20 @@ export function TransactionDetail({
       setTimeout(() => setCopiedHash(false), 2000);
     } catch (err) {
       console.error("Failed to copy hash:", err);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!isCurrentUserSigner() || isCancelling) return;
+    try {
+      setIsCancelling(true);
+      const txid = await cancelTransaction(transaction.id);
+      console.log("Cancellation transaction broadcasted:", txid);
+      setIsCancelling(false);
+      onClose(); // Close modal after successful broadcast
+    } catch (err) {
+      console.error("Error cancelling transaction:", err);
+      setIsCancelling(false);
     }
   };
 
@@ -118,9 +133,10 @@ export function TransactionDetail({
     }
   };
 
-  const status = transaction.executed ? "Executed" : "Pending";
+  const statusLabel = transaction.executed ? "Executed" : transaction.cancelled ? "Cancelled" : "Pending";
   const typeLabel = transaction.type === TXN_TYPE_STX ? "STX Transfer" : "Token Transfer";
-  const canSign = isCurrentUserSigner() && !transaction.executed && !hasSigned(transaction.id, wallet.address || "");
+  const canSign = isCurrentUserSigner() && !transaction.executed && !transaction.cancelled && !hasSigned(transaction.id, wallet.address || "");
+  const canCancel = isCurrentUserSigner() && !transaction.executed && !transaction.cancelled;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -155,11 +171,15 @@ export function TransactionDetail({
               <div className="flex items-center gap-2 pt-1">
                 {transaction.executed ? (
                   <div className="flex items-center gap-2 rounded-full bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-400">
-                    <CheckCircle2 className="h-3 w-3" /> {status}
+                    <CheckCircle2 className="h-3 w-3" /> {statusLabel}
+                  </div>
+                ) : transaction.cancelled ? (
+                  <div className="flex items-center gap-2 rounded-full bg-red-400/10 border border-red-400/20 px-3 py-1 text-xs font-bold text-red-400">
+                    <Ban className="h-3 w-3" /> {statusLabel}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 rounded-full bg-amber-400/10 border border-amber-400/20 px-3 py-1 text-xs font-bold text-amber-400">
-                    <Clock className="h-3 w-3 animate-pulse" /> {status}
+                    <Clock className="h-3 w-3 animate-pulse" /> {statusLabel}
                   </div>
                 )}
               </div>
@@ -199,84 +219,98 @@ export function TransactionDetail({
           )}
 
           {/* Transaction Hash */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <Hash className="h-3 w-3 text-blue-400" /> Transaction Hash
+          {!transaction.cancelled && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <Hash className="h-3 w-3 text-blue-400" /> Transaction Hash
+                </div>
+                {hash && (
+                  <button 
+                    onClick={handleCopyHash}
+                    className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    {copiedHash ? "Copied!" : <><Copy className="h-3 w-3" /> Copy Hash</>}
+                  </button>
+                )}
               </div>
-              {hash && (
-                <button 
-                  onClick={handleCopyHash}
-                  className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  {copiedHash ? "Copied!" : <><Copy className="h-3 w-3" /> Copy Hash</>}
-                </button>
-              )}
+              <div className="rounded-xl bg-black/60 p-4 border border-white/5">
+                {hash ? (
+                  <code className="block font-mono text-xs text-blue-400/90 break-all leading-relaxed">
+                    0x{hash}
+                  </code>
+                ) : (
+                  <div className="h-8 animate-pulse rounded bg-white/5" />
+                )}
+              </div>
             </div>
-            <div className="rounded-xl bg-black/60 p-4 border border-white/5">
-              {hash ? (
-                <code className="block font-mono text-xs text-blue-400/90 break-all leading-relaxed">
-                  0x{hash}
-                </code>
-              ) : (
-                <div className="h-8 animate-pulse rounded bg-white/5" />
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Signature Progress */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-t border-white/5 pt-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" /> 
-                Authorization Progress
-              </h3>
-              <span className="text-[10px] font-black text-slate-500 uppercase">
-                Threshold: {threshold} of {signers.length}
-              </span>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
-                <span>Signatures Collected</span>
-                <span>{transaction.executed ? threshold : signatureCount} / {threshold}</span>
+          {!transaction.cancelled && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> 
+                  Authorization Progress
+                </h3>
+                <span className="text-[10px] font-black text-slate-500 uppercase">
+                  Threshold: {threshold} of {signers.length}
+                </span>
               </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div 
-                  className={`h-full bg-emerald-400 transition-all duration-1000 ${transaction.executed ? 'w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]' : ''}`} 
-                  style={{ width: transaction.executed ? '100%' : `${(signatureCount / threshold) * 100}%` }}
-                />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <span>Signatures Collected</span>
+                  <span>{transaction.executed ? threshold : signatureCount} / {threshold}</span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                  <div 
+                    className={`h-full bg-emerald-400 transition-all duration-1000 ${transaction.executed ? 'w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]' : ''}`} 
+                    style={{ width: transaction.executed ? '100%' : `${(signatureCount / threshold) * 100}%` }}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="grid gap-2">
-              {signers.map((signer) => {
-                const signed = transaction.executed || hasSigned(transaction.id, signer);
-                return (
-                  <div key={signer} className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-transparent hover:border-white/5 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400">
-                        <User className="h-4 w-4" />
+              <div className="grid gap-2">
+                {signers.map((signer) => {
+                  const signed = transaction.executed || hasSigned(transaction.id, signer);
+                  return (
+                    <div key={signer} className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-transparent hover:border-white/5 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <code className="text-[11px] font-mono text-slate-300">{formatAddress(signer)}</code>
+                        {wallet.address === signer && (
+                          <span className="text-[9px] font-bold text-amber-500/50 uppercase">(You)</span>
+                        )}
                       </div>
-                      <code className="text-[11px] font-mono text-slate-300">{formatAddress(signer)}</code>
-                      {wallet.address === signer && (
-                        <span className="text-[9px] font-bold text-amber-500/50 uppercase">(You)</span>
+                      {signed ? (
+                        <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-400 uppercase tracking-tighter">
+                          <CheckCircle2 className="h-3 w-3" /> Signed
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
+                          <Clock className="h-3 w-3" /> Pending
+                        </div>
                       )}
                     </div>
-                    {signed ? (
-                      <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-400 uppercase tracking-tighter">
-                        <CheckCircle2 className="h-3 w-3" /> Signed
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
-                        <Clock className="h-3 w-3" /> Pending
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {transaction.cancelled && (
+            <div className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-red-200">
+              <AlertCircle className="h-6 w-6 shrink-0" />
+              <div>
+                <h4 className="text-sm font-bold uppercase tracking-tight">Proposal Cancelled</h4>
+                <p className="text-xs opacity-80">This transaction was revoked by a signer and can no longer be signed or executed.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -290,9 +324,18 @@ export function TransactionDetail({
           </Link>
           
           <div className="flex gap-3">
-            {isCurrentUserSigner() && !transaction.executed && (
-              <button className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-400 hover:border-red-400/50 transition-all">
-                <Ban className="h-4 w-4" /> Cancel
+            {canCancel && (
+              <button 
+                onClick={handleCancel}
+                disabled={isCancelling}
+                className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-400 hover:border-red-400/50 transition-all disabled:opacity-50"
+              >
+                {isCancelling ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                ) : (
+                  <Ban className="h-4 w-4" />
+                )}
+                Cancel
               </button>
             )}
             
@@ -311,7 +354,7 @@ export function TransactionDetail({
               </button>
             )}
 
-            {signatureCount >= threshold && !transaction.executed && (
+            {signatureCount >= threshold && !transaction.executed && !transaction.cancelled && (
               <button className="flex items-center gap-2 bg-emerald-500 text-zinc-950 px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">
                 <CheckCircle2 className="h-4 w-4" /> Execute
               </button>
