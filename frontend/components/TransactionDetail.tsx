@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { 
   useMultisig, 
   TXN_TYPE_STX, 
   TXN_TYPE_TOKEN 
 } from "@/hooks/useMultisig";
 import type { Transaction } from "@/hooks/useMultisig";
+import { useSignatures } from "@/hooks/useSignatures";
+import { useStacksWallet } from "@/hooks/useStacksWallet";
+import { openSignatureRequest } from "@stacks/connect";
+import { appDetails } from "@/lib/stacks-session";
+import Link from "next/link";
 import { 
   X, 
   ExternalLink, 
@@ -16,7 +21,10 @@ import {
   ArrowRight,
   ShieldCheck,
   User,
-  Copy
+  Copy,
+  PenTool,
+  AlertCircle,
+  Ban
 } from "lucide-react";
 
 type Props = {
@@ -49,9 +57,17 @@ export function TransactionDetail({
   signers,
   onClose 
 }: Props) {
-  const { getTransactionHash } = useMultisig(contractAddress, contractName);
+  const { getTransactionHash, isCurrentUserSigner } = useMultisig(contractAddress, contractName);
+  const wallet = useStacksWallet();
+  const { addSignature, getTxnSignatures, hasSigned } = useSignatures();
+  
   const [hash, setHash] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+
+  // Get signatures for this transaction from our local store
+  const localSignatures = useMemo(() => getTxnSignatures(transaction.id), [transaction.id, getTxnSignatures]);
+  const signatureCount = localSignatures.length;
 
   useEffect(() => {
     async function fetchHash() {
@@ -72,8 +88,39 @@ export function TransactionDetail({
     }
   };
 
+  const handleSign = async () => {
+    if (!hash || !wallet.address) return;
+    
+    try {
+      setIsSigning(true);
+      
+      await openSignatureRequest({
+        message: hash,
+        appDetails,
+        onFinish: (data) => {
+          console.log("Signature successful:", data);
+          addSignature({
+            txnId: transaction.id,
+            signer: wallet.address!,
+            signature: data.signature,
+            timestamp: Date.now()
+          });
+          setIsSigning(false);
+        },
+        onCancel: () => {
+          console.log("Signature cancelled");
+          setIsSigning(false);
+        }
+      });
+    } catch (err) {
+      console.error("Error during signing:", err);
+      setIsSigning(false);
+    }
+  };
+
   const status = transaction.executed ? "Executed" : "Pending";
   const typeLabel = transaction.type === TXN_TYPE_STX ? "STX Transfer" : "Token Transfer";
+  const canSign = isCurrentUserSigner() && !transaction.executed && !hasSigned(transaction.id, wallet.address || "");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -177,7 +224,7 @@ export function TransactionDetail({
             </div>
           </div>
 
-          {/* Signature Progress Placeholder */}
+          {/* Signature Progress */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-t border-white/5 pt-6">
               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
@@ -192,35 +239,42 @@ export function TransactionDetail({
             <div className="space-y-2">
               <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
                 <span>Signatures Collected</span>
-                <span>{transaction.executed ? threshold : "0"} / {threshold}</span>
+                <span>{transaction.executed ? threshold : signatureCount} / {threshold}</span>
               </div>
               <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
                 <div 
-                  className={`h-full bg-emerald-400 transition-all duration-1000 ${transaction.executed ? 'w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'w-0'}`} 
+                  className={`h-full bg-emerald-400 transition-all duration-1000 ${transaction.executed ? 'w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]' : ''}`} 
+                  style={{ width: transaction.executed ? '100%' : `${(signatureCount / threshold) * 100}%` }}
                 />
               </div>
             </div>
 
             <div className="grid gap-2">
-              {signers.map((signer, i) => (
-                <div key={signer} className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-transparent hover:border-white/5 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400">
-                      <User className="h-4 w-4" />
+              {signers.map((signer) => {
+                const signed = transaction.executed || hasSigned(transaction.id, signer);
+                return (
+                  <div key={signer} className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-transparent hover:border-white/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <code className="text-[11px] font-mono text-slate-300">{formatAddress(signer)}</code>
+                      {wallet.address === signer && (
+                        <span className="text-[9px] font-bold text-amber-500/50 uppercase">(You)</span>
+                      )}
                     </div>
-                    <code className="text-[11px] font-mono text-slate-300">{formatAddress(signer)}</code>
+                    {signed ? (
+                      <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-400 uppercase tracking-tighter">
+                        <CheckCircle2 className="h-3 w-3" /> Signed
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
+                        <Clock className="h-3 w-3" /> Pending
+                      </div>
+                    )}
                   </div>
-                  {transaction.executed ? (
-                    <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-400 uppercase tracking-tighter">
-                      <CheckCircle2 className="h-3 w-3" /> Signed
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
-                      <Clock className="h-3 w-3" /> Pending
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -236,9 +290,30 @@ export function TransactionDetail({
           </Link>
           
           <div className="flex gap-3">
-            {!transaction.executed && (
-              <button className="bg-primary text-black px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20">
+            {isCurrentUserSigner() && !transaction.executed && (
+              <button className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-400 hover:border-red-400/50 transition-all">
+                <Ban className="h-4 w-4" /> Cancel
+              </button>
+            )}
+            
+            {canSign && (
+              <button 
+                onClick={handleSign}
+                disabled={isSigning}
+                className="flex items-center gap-2 bg-primary text-black px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+              >
+                {isSigning ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                ) : (
+                  <PenTool className="h-4 w-4" />
+                )}
                 Sign Transaction
+              </button>
+            )}
+
+            {signatureCount >= threshold && !transaction.executed && (
+              <button className="flex items-center gap-2 bg-emerald-500 text-zinc-950 px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">
+                <CheckCircle2 className="h-4 w-4" /> Execute
               </button>
             )}
           </div>
@@ -247,5 +322,3 @@ export function TransactionDetail({
     </div>
   );
 }
-
-import Link from "next/link";
