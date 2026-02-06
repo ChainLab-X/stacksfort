@@ -4,83 +4,94 @@ StacksFort is a decentralized multi-signature vault platform built on the Stacks
 
 ![StacksFort Banner](https://placehold.co/1200x400/212121/ffffff/png?text=StacksFort+Multisig)
 
+## 🏗️ Interactive Workflow & Guide
+
+To use the vault, you must first **Initialize** it. After that, the standard lifecycle for any asset transfer is: **Submit** → **Sign** → **Execute**.
+
+### 1. The Multisig Lifecycle
+
+```mermaid
+graph TD
+    A[Deploy Contract] --> B[Initialize Multisig]
+    B --> C[Submit Transaction Proposal]
+    C --> D[Off-chain Signing]
+    D --> E{Threshold Met?}
+    E -- No --> D
+    E -- Yes --> F[Execute Transaction On-chain]
+    F --> G[Asset Transferred]
+    
+    subgraph "Signer Actions"
+    C
+    D
+    F
+    end
+```
+
+### 2. How to Initialize (The First Step)
+If you see the message `Multisig not initialized`, you must call the `initialize` function once.
+
+*   **Function**: `initialize(signers-list, threshold-value)`
+*   **Parameters**:
+    *   `signers-list`: A list of Stacks addresses (principals) who will be the controllers.
+    *   `threshold-value`: The minimum number of signers required to approve a transfer (e.g., `2`).
+*   **Example**: To set up a 2-of-3 multisig:
+    *   `signers-list`: `['SP1..., 'SP2...', 'SP3...']`
+    *   `threshold-value`: `u2`
+*   **Initial Funds**: You can initialize the vault with zero funds. To add assets later, simply send STX or SIP-010 tokens (like **StacksFort Token**) to the contract address.
+
+### 3. Managing Assets (STX & StacksFort Token)
+The vault manages both native STX and SIP-010 tokens (like the included `stacksfort-token`).
+
+#### Transferring STX:
+1.  **Submit**: A signer calls `submit-txn` with `txn-type: u0`.
+2.  **Sign**: Other signers provide off-chain signatures via the dashboard.
+3.  **Execute**: Once the threshold is met, call `execute-stx-transfer-txn`.
+
+#### Transferring StacksFort Token (or any SIP-010):
+1.  **Submit**: A signer calls `submit-txn` with `txn-type: u1` and provides the **Token Contract Address** (e.g., `...stacksfort-token`).
+2.  **Sign**: Signers approve the proposal off-chain.
+3.  **Execute**: Call `execute-token-transfer-txn`. **Crucial**: You must pass the token contract principal as an argument so the vault knows which token to move.
+
+---
+
 ## 🔐 Key Features
 
-*   **Multi-Signature Security**: Configure up to 100 signers with custom threshold requirements (e.g., 2-of-3, 5-of-7).
-*   **Asset Support**: Native support for **STX** transfers and **SIP-010** fungible tokens (like sBTC, ALEX, DIKO).
-*   **Off-Chain Signing**: Gas-efficient signing process where signatures are collected off-chain and verified on-chain in a single transaction.
-*   **Security First**:
-    *   ✅ **Reentrancy Protection**: Prevents reentrancy attacks during execution.
-    *   ✅ **Transaction Expiration**: Time-bound proposals to prevent stale transactions from being executed.
-    *   ✅ **Verified Contracts**: Checks token contract authenticity before execution.
-*   **Signer Management**: (In Progress) Add/Remove signers and update thresholds via multisig voting.
+*   **Multi-Signature Security**: Configure up to 100 signers with custom threshold requirements.
+*   **Asset Support**: Native support for **STX** and **SIP-010** fungible tokens.
+*   **Off-Chain Signing**: Gas-efficient signing process—pay gas only once during execution.
+*   **Security First**: Reentrancy protection and transaction expiration logic.
 
 ## 🏗️ Project Structure
 
-The project is organized as a monorepo containing both the smart contracts and the frontend application.
-
 ```
 stacksfort/
-├── contract/          # Clarity smart contracts & Clarinet configuration
-│   ├── contracts/     # Source code (stacksfort-multisig.clar)
-│   └── tests/         # Vitest + Clarinet SDK unit tests
+├── contract/          # Clarity smart contracts
+│   ├── contracts/     # stacksfort-multisig.clar & stacksfort-token.clar
+│   └── tests/         # Unit tests
 ├── frontend/          # Next.js web application
-│   ├── app/           # App Router pages
-│   └── components/    # React UI components
 └── README.md          # This file
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-*   [Node.js](https://nodejs.org/) (v18 or higher)
-*   [Clarinet](https://github.com/hirosystems/clarinet) (for contract development)
-*   [Stacks Wallet](https://www.hiro.so/wallet) (Leather or Xverse)
-
 ### 1. Smart Contracts
-
-Navigate to the contract directory to run tests and deploy.
-
 ```bash
 cd contract
 npm install
-
-# Run the test suite (Vitest + Clarinet SDK)
-npm run test
-
-# Deploy to local Devnet
-clarinet integrate
+npm run test        # Run the test suite
 ```
 
 ### 2. Frontend Application
-
-Navigate to the frontend directory to launch the web interface.
-
 ```bash
 cd frontend
 npm install
-
-# Start the development server
-npm run dev
+npm run dev         # Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
-
 ## 📖 Documentation
+*   [Smart Contract Documentation](./contract/README.md)
+*   [Frontend Documentation](./frontend/README.md)
+*   [Issues & Roadmap](./contract/issues.md)
 
-*   [Smart Contract Documentation](./contract/README.md) - detailed function API and error codes.
-*   [Frontend Documentation](./frontend/README.md) - component structure and integration guide.
-*   [Issues & Roadmap](./contract/issues.md) - current progress and planned features.
-
-## 🔒 Security
-
-The core multisig contract (`stacksfort-multisig.clar`) implements several security best practices:
-*   **Checks-Effects-Interactions** pattern to prevent state inconsistencies.
-*   **Reentrancy Locks** on all execution functions.
-*   **Signature Verification** using `secp256k1-recover` to ensure signer authenticity.
-*   **Expiration Checks** using block height to invalidate old proposals.
-
-## 📄 License
-
-This project is licensed under the MIT License.
+---
+**Authored by: bbkenny <jouleself@gmail.com>**
