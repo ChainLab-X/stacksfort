@@ -89,15 +89,15 @@ The multisig frontend follows this workflow:
   - ✅ Token selection for SIP-010
   - ✅ Submit transaction functionality
 
-- [ ] **Issue #29**: Create SignTransaction component
-  - Display transaction hash (fetched from contract using `hash-txn` read-only function)
-  - Sign transaction hash off-chain using wallet private key
-  - Use `signMessageHashRsv` from `@stacks/transactions` for signing
-  - Show signature status (signed/unsigned) for each signer
-  - Display which signers have already signed
-  - Submit signature to backend/state (store in database/state until threshold met)
-  - Show progress toward threshold (e.g., "2/3 signatures collected")
-  - Allow signers to sign pending transactions
+- [x] **Issue #29**: Create SignTransaction component
+  - ✅ Display transaction hash (fetched from contract using `hash-txn` read-only function)
+  - ✅ Sign transaction hash off-chain using wallet private key
+  - ✅ Use `openSignatureRequest` from `@stacks/connect` for signing
+  - ✅ Show signature status (signed/unsigned) for each signer
+  - ✅ Display which signers have already signed
+  - ✅ Implement local signature storage (mock backend) to track signatures
+  - ✅ Show progress toward threshold (e.g., "2/3 signatures collected")
+  - ✅ Allow signers to sign pending transactions
 
 - [ ] **Issue #30**: Create ExecuteTransaction component
   - Collect all signatures from signers (aggregate signatures from database/state)
