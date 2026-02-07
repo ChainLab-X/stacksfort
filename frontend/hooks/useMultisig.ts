@@ -37,7 +37,6 @@ export interface Transaction {
   recipient: string;
   token: string | null;
   executed: boolean;
-  cancelled: boolean;
 }
 
 // Multisig state interface
@@ -160,7 +159,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
             recipient: txnData.recipient,
             token: txnData.token || null,
             executed: txnData.executed,
-            cancelled: txnData.cancelled || false,
           };
         }
         return null;
@@ -255,42 +253,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
         return broadcastResponse.txid;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to submit transaction");
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [wallet.address, address, name, getNetwork]
-  );
-
-  const cancelTransaction = useCallback(
-    async (txnId: number): Promise<string | null> => {
-      if (!wallet.address) {
-        setError("Wallet not connected");
-        return null;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        const txOptions = {
-          network: getNetwork(),
-          anchorMode: AnchorMode.Any,
-          contractAddress: address,
-          contractName: name,
-          functionName: "cancel-txn",
-          functionArgs: [uintCV(txnId)],
-          senderKey: wallet.address,
-          postConditionMode: PostConditionMode.Deny,
-        };
-        const transaction = await makeContractCall(txOptions);
-        const broadcastResponse = await broadcastTransaction({
-          transaction,
-          network: getNetwork(),
-        });
-        return broadcastResponse.txid;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to cancel transaction");
         return null;
       } finally {
         setLoading(false);
@@ -517,12 +479,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
 
   const fetchMultisigState = useCallback(async () => {
     try {
-      const apiUrl = "https://api.hiro.so";
+      // Use the local proxy for data-vars to avoid CORS issues
+      const apiUrl = "/api/stacks-node";
       const fetchDataVar = async (varName: string) => {
-        const response = await fetch(`${apiUrl}/v2/contracts/data-var/${address}/${name}/${varName}`);
+        const url = `${apiUrl}/v2/contracts/data-var/${address}/${name}/${varName}`;
+        const response = await fetch(url);
         if (!response.ok) {
-            if (response.status === 404) return null;
-            throw new Error(`Failed to fetch ${varName}: ${response.statusText}`);
+            return null;
         }
         const data = await response.json();
         return data.data; 
@@ -536,6 +499,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
       ]);
 
       if (!initializedHex || !signersHex || !thresholdHex || !txnIdHex) {
+          console.error("Missing multisig state components. Initialization might be incomplete.");
           setMultisigState({ initialized: false, signers: [], threshold: 0, nextTxnId: 0 });
           return;
       }
@@ -554,7 +518,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const fetchTransactions = useCallback(async () => {
     try {
       if (!multisigState) return;
-      const apiUrl = "https://api.hiro.so";
+      const apiUrl = "/api/stacks-node";
       const txs: Transaction[] = [];
       
       for (let i = multisigState.nextTxnId - 1; i >= 0; i--) {
@@ -578,13 +542,13 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
                 recipient: txnVal.recipient,
                 token: txnVal.token ? txnVal.token.value : null,
                 executed: txnVal.executed,
-                cancelled: txnVal.cancelled || false
             });
         }
       }
       setTransactions(txs);
     } catch (err) {}
   }, [address, name, getNetwork, multisigState]);
+
 
   useEffect(() => {
     if (wallet.isSignedIn) {
@@ -604,7 +568,6 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     getTransaction,
     initialize,
     submitTransaction,
-    cancelTransaction,
     submitConfigTransaction,
     executeStxTransfer,
     executeTokenTransfer,
