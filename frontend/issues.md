@@ -255,17 +255,17 @@ The multisig frontend follows this workflow:
 
 ## Documentation
 
-- [ ] **Issue #51**: Write user documentation
-  - How to create a multisig
-  - How to submit transactions
-  - How to sign transactions
-  - How to execute transactions
+- [x] **Issue #51**: Write user documentation
+  - ✅ How to create a multisig
+  - ✅ How to submit transactions
+  - ✅ How to sign transactions
+  - ✅ How to execute transactions
 
-- [ ] **Issue #52**: Write developer documentation
-  - Architecture overview
-  - Contract API documentation
-  - Frontend component documentation
-  - Contribution guidelines
+- [x] **Issue #52**: Write developer documentation
+  - ✅ Architecture overview
+  - ✅ Contract API documentation
+  - ✅ Frontend component documentation
+  - ✅ Contribution guidelines
 
 - [ ] **Issue #53**: Create video tutorials
   - Setup walkthrough
