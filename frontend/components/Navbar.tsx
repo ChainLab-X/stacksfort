@@ -4,6 +4,7 @@ import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/NavLinks";
 import { NetworkBadge } from "@/components/NetworkBadge";
 import { WalletButton } from "@/components/WalletButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStacksWallet } from "@/hooks/useStacksWallet";
 
 export function Navbar() {
@@ -21,6 +22,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <NetworkBadge network={wallet.network} />
           <WalletButton wallet={wallet} />
         </div>

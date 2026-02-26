@@ -192,16 +192,16 @@ The multisig frontend follows this workflow:
   - ✅ Executed status
   - ✅ Failed status
 
-- [ ] **Issue #41**: Implement responsive design
-  - Mobile-friendly layout
-  - Tablet optimization
-  - Desktop layout
-  - Touch-friendly interactions
+- [x] **Issue #41**: Implement responsive design
+  - ✅ Mobile-friendly layout
+  - ✅ Tablet optimization
+  - ✅ Desktop layout
+  - ✅ Touch-friendly interactions
 
-- [ ] **Issue #42**: Add dark mode support
-  - Theme toggle
-  - Dark mode styles
-  - Persist theme preference
+- [x] **Issue #42**: Add dark mode support
+  - ✅ Theme toggle
+  - ✅ Dark mode styles
+  - ✅ Persist theme preference
 
 ### Advanced Features
 

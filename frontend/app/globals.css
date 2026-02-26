@@ -24,6 +24,16 @@
   }
 }
 
+.dark {
+  --background: #05060b;
+  --foreground: #e2e8f0;
+}
+
+.light {
+  --background: #e2e8f0;
+  --foreground: #05060b;
+}
+
 * {
   box-sizing: border-box;
 }
