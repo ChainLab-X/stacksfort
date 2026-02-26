@@ -120,11 +120,11 @@ The multisig frontend follows this workflow:
   - ✅ Signer visibility section
   - ✅ Documentation section with links
 
-- [ ] **Issue #32**: Create Multisig page ([address]/page.tsx)
-  - Display multisig dashboard
-  - Show transaction list
-  - Transaction creation interface
-  - Signing interface
+- [x] **Issue #32**: Create Multisig page ([address]/page.tsx)
+  - ✅ Display multisig dashboard
+  - ✅ Show transaction list
+  - ✅ Transaction creation interface
+  - ✅ Signing interface
 
 ### Utilities & Helpers
 

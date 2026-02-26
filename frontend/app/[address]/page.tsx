@@ -89,8 +89,13 @@ export default function MultisigPage() {
         <MultisigDashboard contractAddress={contractAddress} contractName={contractName} />
       </section>
 
-      <section>
-        <TransactionList contractAddress={contractAddress} contractName={contractName} />
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+           <TransactionList contractAddress={contractAddress} contractName={contractName} />
+        </div>
+        <div>
+           <CreateTransaction contractAddress={contractAddress} contractName={contractName} />
+        </div>
       </section>
     </div>
   );
