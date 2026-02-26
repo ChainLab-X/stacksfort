@@ -151,25 +151,25 @@ The multisig frontend follows this workflow:
 
 ### Backend Integration
 
-- [ ] **Issue #36**: Set up API routes for transaction storage
-  - Store pending signatures (signer address, transaction ID, signature)
-  - Fetch pending transactions from contract state
-  - Update signature status when signer signs a transaction
-  - Track which signers have signed which transactions
-  - Aggregate signatures for execution when threshold is met
-  - Clean up executed transactions (optional: archive old transactions)
-  - API endpoint to get all signatures for a transaction ID
-  - API endpoint to check if transaction is ready to execute
+- [x] **Issue #36**: Set up API routes for transaction storage
+  - ✅ Store pending signatures (signer address, transaction ID, signature)
+  - ✅ Fetch pending transactions from contract state
+  - ✅ Update signature status when signer signs a transaction
+  - ✅ Track which signers have signed which transactions
+  - ✅ Aggregate signatures for execution when threshold is met
+  - ✅ Clean up executed transactions (optional: archive old transactions)
+  - ✅ API endpoint to get all signatures for a transaction ID
+  - ✅ API endpoint to check if transaction is ready to execute
 
-- [ ] **Issue #37**: Implement signature aggregation
-  - Collect signatures from multiple signers (from database/state)
-  - Validate signatures format (65-byte buffers)
-  - Aggregate signatures into list format for contract execution
-  - Handle signature submission from individual signers
-  - Check for duplicate signatures (same signer signing twice)
-  - Verify signatures are from valid signers
-  - Format signatures list for contract call (list of 100 (buff 65))
-  - Trigger execution automatically when threshold is met (optional)
+- [x] **Issue #37**: Implement signature aggregation
+  - ✅ Collect signatures from multiple signers (from database/state)
+  - ✅ Validate signatures format (65-byte buffers)
+  - ✅ Aggregate signatures into list format for contract execution
+  - ✅ Handle signature submission from individual signers
+  - ✅ Check for duplicate signatures (same signer signing twice)
+  - ✅ Verify signatures are from valid signers
+  - ✅ Format signatures list for contract call (list of 100 (buff 65))
+  - ✅ Trigger execution automatically when threshold is met (optional)
 
 ### UI/UX
 
