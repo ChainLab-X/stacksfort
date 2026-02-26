@@ -211,11 +211,11 @@ The multisig frontend follows this workflow:
   - Execution confirmations
   - Browser notifications
 
-- [ ] **Issue #44**: Implement transaction filtering and search
-  - Filter by type
-  - Filter by status
-  - Search by transaction ID
-  - Search by recipient
+- [x] **Issue #44**: Implement transaction filtering and search
+  - ✅ Filter by type
+  - ✅ Filter by status
+  - ✅ Search by transaction ID
+  - ✅ Search by recipient
 
 - [ ] **Issue #45**: Add multisig creation flow
   - Form for signers

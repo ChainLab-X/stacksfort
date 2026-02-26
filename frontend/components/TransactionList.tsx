@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMultisig, TXN_TYPE_STX, TXN_TYPE_TOKEN } from "@/hooks/useMultisig";
 import type { Transaction } from "@/hooks/useMultisig";
 import { TransactionDetail } from "./TransactionDetail";
+import { Search } from "lucide-react";
 
 type Props = {
   contractAddress: string;
@@ -69,6 +70,7 @@ const getStatusBadge = (executed: boolean) => {
 export function TransactionList({ contractAddress, contractName = "multisig" }: Props) {
   const { transactions, isLoading, error, state } = useMultisig(contractAddress, contractName);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
 
@@ -83,10 +85,19 @@ export function TransactionList({ contractAddress, contractName = "multisig" }: 
     } else if (filterStatus === "executed") {
       filtered = filtered.filter((txn) => txn.executed);
     }
+
+    if (searchTerm.trim() !== "") {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((txn) => 
+        txn.recipient.toLowerCase().includes(term) || 
+        txn.id.toString() === term ||
+        (txn.token && txn.token.toLowerCase().includes(term))
+      );
+    }
     
     // Sort by ID descending (newest first)
     return filtered.sort((a, b) => b.id - a.id);
-  }, [transactions, filterStatus]);
+  }, [transactions, filterStatus, searchTerm]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
@@ -154,41 +165,58 @@ export function TransactionList({ contractAddress, contractName = "multisig" }: 
           </p>
         </div>
         
-        {/* Filter Buttons */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => handleFilterChange("all")}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
-              filterStatus === "all"
-                ? "bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30"
-                : "bg-white/5 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFilterChange("pending")}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
-              filterStatus === "pending"
-                ? "bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30"
-                : "bg-white/5 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            Pending
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFilterChange("executed")}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
-              filterStatus === "executed"
-                ? "bg-emerald-400/20 text-emerald-200 ring-1 ring-emerald-400/30"
-                : "bg-white/5 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            Executed
-          </button>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search ID, Recipient..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-64 rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-white placeholder-slate-400 outline-none transition-colors focus:border-amber-400/50"
+            />
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleFilterChange("all")}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
+                filterStatus === "all"
+                  ? "bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFilterChange("pending")}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
+                filterStatus === "pending"
+                  ? "bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/30"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              Pending
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFilterChange("executed")}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 ${
+                filterStatus === "executed"
+                  ? "bg-emerald-400/20 text-emerald-200 ring-1 ring-emerald-400/30"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              Executed
+            </button>
+          </div>
         </div>
       </div>
 
