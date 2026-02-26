@@ -128,26 +128,26 @@ The multisig frontend follows this workflow:
 
 ### Utilities & Helpers
 
-- [ ] **Issue #33**: Create multisig-contract.ts utilities
-  - Contract ABI definitions
-  - Contract call helpers
-  - Read-only function wrappers
-  - Public function wrappers
+- [x] **Issue #33**: Create multisig-contract.ts utilities
+  - ✅ Contract ABI definitions
+  - ✅ Contract call helpers
+  - ✅ Read-only function wrappers
+  - ✅ Public function wrappers
 
-- [ ] **Issue #34**: Create transaction-helpers.ts
-  - Transaction hash calculation (call contract's `hash-txn` read-only function)
-  - Off-chain signature generation using `signMessageHashRsv` from `@stacks/transactions`
-  - Signature validation helpers (verify signature format, extract signer)
-  - Transaction status helpers (pending, signed, ready-to-execute, executed)
-  - Transaction formatting (display type, amount, recipient in user-friendly format)
-  - Signature aggregation logic (collect and format signatures for execution)
-  - Check if threshold is met for a transaction
+- [x] **Issue #34**: Create transaction-helpers.ts
+  - ✅ Transaction hash calculation (call contract's `hash-txn` read-only function)
+  - ✅ Off-chain signature generation using `signMessageHashRsv` from `@stacks/transactions`
+  - ✅ Signature validation helpers (verify signature format, extract signer)
+  - ✅ Transaction status helpers (pending, signed, ready-to-execute, executed)
+  - ✅ Transaction formatting (display type, amount, recipient in user-friendly format)
+  - ✅ Signature aggregation logic (collect and format signatures for execution)
+  - ✅ Check if threshold is met for a transaction
 
-- [ ] **Issue #35**: Create stx-utils.ts
-  - Address abbreviation
-  - Transaction ID abbreviation
-  - Amount formatting
-  - Date/time formatting
+- [x] **Issue #35**: Create stx-utils.ts
+  - ✅ Address abbreviation
+  - ✅ Transaction ID abbreviation
+  - ✅ Amount formatting
+  - ✅ Date/time formatting
 
 ### Backend Integration
 
