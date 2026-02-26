@@ -173,24 +173,24 @@ The multisig frontend follows this workflow:
 
 ### UI/UX
 
-- [ ] **Issue #38**: Design and implement loading states
-  - Transaction loading
-  - Signature submission loading
-  - Execution loading
-  - Skeleton loaders
+- [x] **Issue #38**: Design and implement loading states
+  - ✅ Transaction loading
+  - ✅ Signature submission loading
+  - ✅ Execution loading
+  - ✅ Skeleton loaders
 
-- [ ] **Issue #39**: Implement error handling and display
-  - Transaction errors
-  - Signature errors
-  - Execution errors
-  - User-friendly error messages
+- [x] **Issue #39**: Implement error handling and display
+  - ✅ Transaction errors
+  - ✅ Signature errors
+  - ✅ Execution errors
+  - ✅ User-friendly error messages
 
-- [ ] **Issue #40**: Add transaction status indicators
-  - Pending status
-  - Signing in progress
-  - Ready to execute
-  - Executed status
-  - Failed status
+- [x] **Issue #40**: Add transaction status indicators
+  - ✅ Pending status
+  - ✅ Signing in progress
+  - ✅ Ready to execute
+  - ✅ Executed status
+  - ✅ Failed status
 
 - [ ] **Issue #41**: Implement responsive design
   - Mobile-friendly layout
